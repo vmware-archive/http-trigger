@@ -105,15 +105,17 @@ jobs:
           path: /home/circleci/.go_workspace/bin/kubeless
       - store_artifacts:
           path: build-manifests
-  minikube:
+  minikube_core_triggers:
     <<: *defaults
     machine: true
     steps:
       - checkout
+      - <<: *exports
       - attach_workspace:
           at: /tmp/go
-      - <<: *exports
       - <<: *restore_workspace
+      - run: sudo apt-get update -y
+      - run: sudo apt-get install -y apache2-utils
       - run: ./script/pull-or-build-image.sh http-controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube http

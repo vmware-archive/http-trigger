@@ -24,7 +24,7 @@ exports: &exports
     echo "export CONTROLLER_TAG=${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export HTTP_CONTROLLER_IMAGE=${HTTP_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV    
-    echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/http-=trigger/ksonnet-lib" >> $BASH_ENV
+    echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/http-trigger/ksonnet-lib" >> $BASH_ENV
     echo "export PATH=$(pwd)/bats/libexec:$PATH" >> $BASH_ENV
 restore_workspace: &restore_workspace
   run: |

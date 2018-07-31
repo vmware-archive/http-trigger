@@ -1,10 +1,9 @@
 #!/bin/bash
 set -e
 
-REPO_NAME=kubeless
-REPO_DOMAIN=http-trigger
+REPO_NAME=http-trigger
+REPO_DOMAIN=kubeless
 TAG=${1:?}
-MANIFESTS=${2:?} # Space separated list of manifests to publish
 
 PROJECT_DIR=$(cd $(dirname $0)/.. && pwd)
 
@@ -27,12 +26,3 @@ if [[ $repo_check == *"Not Found"* ]]; then
 else
   RELEASE_ID=$(release_tag $TAG $REPO_DOMAIN $REPO_NAME | jq '.id')
 fi
-
-IFS=' ' read -r -a manifests <<< "$MANIFESTS"
-for f in "${manifests[@]}"; do
-  cp ${PROJECT_DIR}/${f}.yaml ${PROJECT_DIR}/${f}-${TAG}.yaml
-  upload_asset $REPO_DOMAIN $REPO_NAME "$RELEASE_ID" "${PROJECT_DIR}/${f}-${TAG}.yaml"
-done
-for f in `ls ${PROJECT_DIR}/bundles/kubeless_*.zip`; do
-  upload_asset $REPO_DOMAIN $REPO_NAME $RELEASE_ID $f
-done

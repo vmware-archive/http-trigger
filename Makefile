@@ -31,14 +31,6 @@ binary:
 binary-cross:
 	./script/binary-cli
 
-%.yaml: %.jsonnet
-	$(KUBECFG) show -o yaml $< > $@.tmp
-	mv $@.tmp $@
-
-all-yaml: http.yaml
-
-http.yaml: http.jsonnet
-
 http-controller-build:
 	./script/binary-controller -os=$(OS) -arch=$(ARCH) http-controller github.com/kubeless/http-trigger/cmd/http-trigger-controller
 

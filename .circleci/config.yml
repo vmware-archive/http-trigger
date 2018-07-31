@@ -82,13 +82,13 @@ jobs:
       - checkout
       - <<: *exports
       - run: make bootstrap
+      - run: mkdir build-manifests
       - run: |
           git clone https://github.com/kubeless/kubeless.git $GOPATH/src/github.com/kubeless/kubeless
           ln -s $(pwd)/ksonnet-lib $GOPATH/src/github.com/kubeless/kubeless/ksonnet-lib
           cd $GOPATH/src/github.com/kubeless/kubeless
           make binary
           make all-yaml
-          mkdir build-manifests
           # Replace the controller version that is included in the main Kubeless manifest
           IFS=' ' read -r -a manifests <<< "$KUBELESS_MANIFESTS"
           for f in "${manifests[@]}"; do

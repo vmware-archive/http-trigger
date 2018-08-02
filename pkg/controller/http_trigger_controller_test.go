@@ -35,9 +35,9 @@ func TestHTTPFunctionAddedUpdated(t *testing.T) {
 	clientset := fake.NewSimpleClientset(&ingress)
 
 	controller := HTTPTriggerController{
-		clientset:      clientset,
-		kubelessclient: triggerClientset,
-		logger:         logrus.WithField("controller", "http-trigger-controller"),
+		clientset:  clientset,
+		httpclient: triggerClientset,
+		logger:     logrus.WithField("controller", "http-trigger-controller"),
 	}
 
 	// no-op for when the function is not deleted
@@ -46,7 +46,7 @@ func TestHTTPFunctionAddedUpdated(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	list, err := controller.kubelessclient.KubelessV1beta1().HTTPTriggers("myns").List(metav1.ListOptions{})
+	list, err := controller.httpclient.KubelessV1beta1().HTTPTriggers("myns").List(metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -80,9 +80,9 @@ func TestHTTPFunctionDeleted(t *testing.T) {
 	clientset := fake.NewSimpleClientset(&ingress)
 
 	controller := HTTPTriggerController{
-		clientset:      clientset,
-		kubelessclient: triggerClientset,
-		logger:         logrus.WithField("controller", "http-trigger-controller"),
+		clientset:  clientset,
+		httpclient: triggerClientset,
+		logger:     logrus.WithField("controller", "http-trigger-controller"),
 	}
 
 	err := controller.functionAddedDeletedUpdated(&f, true)
@@ -90,7 +90,7 @@ func TestHTTPFunctionDeleted(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	list, err := controller.kubelessclient.KubelessV1beta1().HTTPTriggers("myns").List(metav1.ListOptions{})
+	list, err := controller.httpclient.KubelessV1beta1().HTTPTriggers("myns").List(metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}

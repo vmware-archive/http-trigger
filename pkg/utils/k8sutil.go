@@ -50,7 +50,7 @@ const (
 
 // GetClient returns a k8s clientset to the request from inside of cluster
 func GetClient() kubernetes.Interface {
-	config, err := rest.InClusterConfig()
+	config, err := GetInClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -65,7 +65,7 @@ func GetClient() kubernetes.Interface {
 
 // GetTriggerClientInCluster returns function clientset to the request from inside of cluster
 func GetTriggerClientInCluster() (versioned.Interface, error) {
-	config, err := rest.InClusterConfig()
+	config, err := GetInClusterConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func GetKubelessClientOutCluster() (versioned.Interface, error) {
 
 // GetFunctionClientInCluster returns function clientset to the request from inside of cluster
 func GetFunctionClientInCluster() (versioned.Interface, error) {
-	config, err := rest.InClusterConfig()
+	config, err := GetInClusterConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +120,23 @@ func GetFunctionClientInCluster() (versioned.Interface, error) {
 	}
 
 	return kubelessClient, nil
+}
+
+// GetInClusterConfig returns necessary Config object to authenticate k8s clients if env variable is set
+func GetInClusterConfig() (*rest.Config, error) {
+	config, err := GetInClusterConfig()
+
+	tokenFile := os.Getenv("KUBELESS_TOKEN_FILE_PATH")
+	if len(tokenFile) == 0 {
+		return config, err
+	}
+	tokenBytes, err := ioutil.ReadFile(tokenFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read file containing oauth token: %s", err)
+	}
+	config.BearerToken = string(tokenBytes)
+
+	return config, nil
 }
 
 // CreateHTTPTriggerCustomResource will create a HTTP trigger custom resource object

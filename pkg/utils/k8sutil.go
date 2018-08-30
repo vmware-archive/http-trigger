@@ -125,7 +125,7 @@ func GetFunctionClientInCluster() (versioned.Interface, error) {
 
 // GetInClusterConfig returns necessary Config object to authenticate k8s clients if env variable is set
 func GetInClusterConfig() (*rest.Config, error) {
-	config, err := GetInClusterConfig()
+	config, err := rest.InClusterConfig()
 
 	tokenFile := os.Getenv("KUBELESS_TOKEN_FILE_PATH")
 	if len(tokenFile) == 0 {

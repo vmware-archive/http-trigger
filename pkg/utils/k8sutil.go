@@ -42,6 +42,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
 	"github.com/kubeless/http-trigger/pkg/client/clientset/versioned"
+	"io/ioutil"
 )
 
 const (

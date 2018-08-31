@@ -44,8 +44,4 @@ import:
 - package: github.com/aws/aws-sdk-go
   version: v1.13.50
 - package: github.com/kubeless/kubeless
-  version: v1.0.0-alpha.6
-- package: github.com/coreos/prometheus-operator
-  version: 197eb012d973f5aaf4d0446fd8f638f1b9067128
-  subpackages:
-  - pkg/client/monitoring/v1alpha1
+  version: v1.0.0-alpha.8

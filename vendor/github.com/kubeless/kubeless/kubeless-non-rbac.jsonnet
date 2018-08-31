@@ -29,8 +29,18 @@ local controllerEnv = [
    },
 ];
 
-local controllerContainer =
-  container.default("kubeless-controller-manager", "bitnami/kubeless-controller-manager:latest") +
+local functionControllerContainer =
+  container.default("kubeless-function-controller", "kubeless/function-controller:latest") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.env(controllerEnv);
+
+local httpTriggerControllerContainer =
+  container.default("http-trigger-controller", "bitnami/http-trigger-controller:v1.0.0-alpha.9") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.env(controllerEnv);
+
+local cronjobTriggerContainer =
+  container.default("cronjob-trigger-controller", "bitnami/cronjob-trigger-controller:v1.0.0-alpha.9") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
@@ -40,7 +50,7 @@ local controllerAccount =
   serviceAccount.default(controller_account_name, namespace);
 
 local controllerDeployment =
-  deployment.default("kubeless-controller-manager", controllerContainer, namespace) +
+  deployment.default("kubeless-controller-manager", [functionControllerContainer, httpTriggerControllerContainer, cronjobTriggerContainer], namespace) +
   {metadata+:{labels: kubelessLabel}} +
   {spec+: {selector: {matchLabels: kubelessLabel}}} +
   {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +
@@ -52,21 +62,18 @@ local crd = [
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("functions.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
-    description: "Kubernetes Native Serverless Framework",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("httptriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HTTPTrigger"}},
-    description: "CRD object for HTTP trigger type",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("cronjobtriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "cronjobtriggers", singular: "cronjobtrigger", kind: "CronJobTrigger"}},
-    description: "CRD object for HTTP trigger type",
   }
 ];
 
@@ -106,13 +113,13 @@ local runtime_images ='[
       {
         "name": "node6",
         "version": "6",
-        "runtimeImage": "kubeless/nodejs@sha256:013facddb0f66c150844192584d823d7dfb2b5b8d79fd2ae98439c86685da657",
+        "runtimeImage": "kubeless/nodejs@sha256:f2a338c62d010687137c0880d1b68bea926f71a7111251a4622db8ae8c036898",
         "initImage": "node:6.10"
       },
       {
         "name": "node8",
         "version": "8",
-        "runtimeImage": "kubeless/nodejs@sha256:b155d7e20e333044b60009c12a25a97c84eed610f2a3d9d314b47449dbdae0e5",
+        "runtimeImage": "kubeless/nodejs@sha256:3b5180a9e0bdce043f0f455758561cf4ad62406fcc80140c2393a2c3a1ff88ac",
         "initImage": "node:8"
       }
     ],
@@ -208,14 +215,28 @@ local runtime_images ='[
      "compiled": true,
      "versions": [
        {
-          "name": "ballerina0.975.0",
-          "version": "0.975.0",
-          "runtimeImage": "kubeless/ballerina@sha256:83e51423972f4b0d6b419bee0b4afb3bb87d2bf1b604ebc4366c430e7cc28a35",
-          "initImage": "kubeless/ballerina-init@sha256:05857ce439a7e290f9d86f8cb38ea3b574670c0c0e91af93af06686fa21ecf4f"
+          "name": "ballerina0.981.0",
+          "version": "0.981.0",
+          "runtimeImage": "ballerina/kubeless-ballerina@sha256:a025841010cfdf8136396efef31d4155283770d331ded6a9003e6e55f02db2e5",
+          "initImage": "ballerina/kubeless-ballerina-init@sha256:a04ca9d289c62397d0b493876f6a9ff4cc425563a47aa7e037c3b850b8ceb3e8"
        }
      ],
      "depName": "",
      "fileNameSuffix": ".bal"
+  },
+  {
+    "ID": "jvm",
+    "compiled": true,
+    "versions": [
+      {
+        "name": "jvm1.8",
+        "version": "1.8",
+        "runtimeImage": "caraboides/jvm@sha256:2870c4f48df4feb2ee7478a152b44840d781d4b1380ad3fa44b3c7ff314faded",
+        "initImage": "caraboides/jvm-init@sha256:e57dbf3f56570a196d68bce1c0695102b2dbe3ae2ca6d1c704476a7a11542f1d"
+      }
+    ],
+    "depName": "",
+    "fileNameSuffix": ".jar"
   }
 ]';
 

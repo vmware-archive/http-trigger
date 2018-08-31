@@ -1,5 +1,5 @@
-hash: 715d972a5e2a70d06f8bab54e2152004ee7b350a23f38e320873145bf4080eed
-updated: 2018-07-06T02:26:01.790561796+05:30
+hash: 5b6b853339218be1f8a9088a7281aed25491b8d12c7d94553692afe0daa8a5d1
+updated: 2018-08-31T09:18:36.251702+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -80,21 +80,16 @@ imports:
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/kubeless/kubeless
-  version: 25c043b523e641870cbfebabccfc7e1fffdc1ebc
+  version: c67245df9321d5f0ba207980cfd3c60cd4e7669e
   subpackages:
   - pkg/apis/kubeless
   - pkg/apis/kubeless/v1beta1
   - pkg/client/clientset/versioned
-  - pkg/client/clientset/versioned/fake
   - pkg/client/clientset/versioned/scheme
   - pkg/client/clientset/versioned/typed/kubeless/v1beta1
-  - pkg/client/clientset/versioned/typed/kubeless/v1beta1/fake
-  - pkg/client/informers/externalversions
   - pkg/client/informers/externalversions/internalinterfaces
-  - pkg/client/informers/externalversions/kubeless
   - pkg/client/informers/externalversions/kubeless/v1beta1
   - pkg/client/listers/kubeless/v1beta1
-  - pkg/functions
   - pkg/langruntime
   - pkg/utils
 - name: github.com/mailru/easyjson

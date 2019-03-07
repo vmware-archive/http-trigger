@@ -64,6 +64,19 @@ load ../script/libtest
     verify_clean_object ingress ing-get-python
 }
 
+@test "Create HTTP Trigger with cors" {
+    deploy_function get-python
+    verify_function get-python
+	create_http_trigger_cors get-python  "cors_enable" "test.domain"
+	verify_http_trigger_cors get-python $(minikube ip) "Access-Control-Allow-Origin: *" "test.domain" "test.domain"
+	delete_http_trigger get-python
+	verify_clean_object httptrigger ing-get-python
+	verify_clean_object ingress ing-get-python
+}
+
+
+
+
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
     echo "Found errors in the controller logs"

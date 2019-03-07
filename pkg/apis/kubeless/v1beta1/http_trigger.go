@@ -39,6 +39,8 @@ type HTTPTriggerSpec struct {
 	Path            string `json:"path"`
 	BasicAuthSecret string `json:"basic-auth-secret"`
 	Gateway         string `json:"gateway"`
+	CorsEnable		bool `json:"cors-enable"`
+	CorsDomain      string `json:"cors-domain"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

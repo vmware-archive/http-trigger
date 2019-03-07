@@ -457,6 +457,23 @@ create_http_trigger(){
     fi
     eval $command
 }
+
+create_http_trigger_cors(){
+    local func=${1:?}; shift
+    local cors=${1:?}; shift
+    local domain=${1-""};
+    delete_http_trigger ${func}
+    echo_info "TEST: Creating HTTP trigger with Cors"
+    local command="kubeless trigger http create ing-${func} --function-name ${func}"
+    if [ -n "$domain" ]; then
+        command="$command --hostname ${domain}"
+    fi
+    if [[ $cors = "cors-enable" ]]; then
+        command="$command --cors-enable"
+    fi
+    eval $command
+}
+
 update_http_trigger(){
     local func=${1:?}; shift
     local domain=${1:-""}
@@ -521,6 +538,24 @@ verify_https_trigger(){
     sleep 3
     curl -k -vv --header "Host: $domain" https:\/\/$ip\/$subpath | grep "${expected_response}"
 }
+
+verify_http_trigger_cors(){
+    local func=${1:?}; shift
+    local ip=${1:?}; shift
+    local expected_response=${1:?}; shift
+    local domain=${1:?}; shift
+    local subpath=${1:-""};
+    kubeless trigger http list | grep ${func}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for ingress to be ready..."
+    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+    sleep 3
+    curl -vv --header "Host: $domain" $ip\/$subpath |& grep "${expected_response}"
+}
+
 delete_http_trigger() {
     local func=${1:?}; shift
     kubeless trigger http list |grep -w ing-${func} && kubeless trigger http delete ing-${func} >& /dev/null || true

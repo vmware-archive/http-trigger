@@ -19,19 +19,18 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"os"
-	"path/filepath"
-
 	httptriggerapi "github.com/kubeless/http-trigger/pkg/apis/kubeless/v1beta1"
 	kubelessApi "github.com/kubeless/http-trigger/pkg/apis/kubeless/v1beta1"
+	"github.com/sirupsen/logrus"
 	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-
-	"github.com/sirupsen/logrus"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 
 	"k8s.io/client-go/rest"
 
@@ -266,6 +265,12 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 	// Without a rewrite any request will return 404. Set the annotation ingress.kubernetes.io/rewrite-target
 	// to the path expected by the service
 	ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
+	if httpTriggerObj.Spec.CorsEnable == true {
+		ingressAnnotations["nginx.ingress.kubernetes.io/enable-cors"]= strconv.FormatBool(httpTriggerObj.Spec.CorsEnable)
+		ingressAnnotations["nginx.ingress.kubernetes.io/cors-allow-methods"]="PUT, GET, POST, OPTIONS, PATCH, DELETE"
+		ingressAnnotations["nginx.ingress.kubernetes.io/cors-allow-origin"]= httpTriggerObj.Spec.CorsDomain
+		ingressAnnotations["nginx.ingress.kubernetes.io/cors-allow-credentials"]="true"
+	}
 
 	if len(httpTriggerObj.Spec.BasicAuthSecret) > 0 {
 		switch gateway := httpTriggerObj.Spec.Gateway; gateway {

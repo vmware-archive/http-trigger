@@ -164,7 +164,7 @@ kubeless_nats_trigger_delete() {
     local trigger=${1:?}; shift
     echo_info "Deleting NATS trigger "${trigger}" in case still present ... "
     kubeless trigger nats list |grep -w "${trigger}" && kubeless trigger nats delete "${trigger}" >& /dev/null || true
-}    
+}
 kubeless_function_deploy() {
     local func=${1:?}; shift
     echo_info "Deploying function ..."
@@ -438,7 +438,7 @@ create_http_trigger(){
     local func=${1:?}; shift
     local domain=${1-""};
     local subpath=${2-""};
-    local basicauth=${3-""};
+    local var3=${3-""};
     local gateway=${4-""};
     delete_http_trigger ${func}
     echo_info "TEST: Creating HTTP trigger"
@@ -449,26 +449,13 @@ create_http_trigger(){
     if [ -n "$subpath" ]; then
         command="$command --path ${subpath}"
     fi
-    if [ -n "$basicauth" ]; then
+    if [[ $var3 = "basic-auth" ]]; then
         command="$command --basic-auth-secret ${basicauth}"
     fi
     if [ -n "$gateway" ]; then
         command="$command --gateway ${gateway}"
     fi
-    eval $command
-}
-
-create_http_trigger_cors(){
-    local func=${1:?}; shift
-    local cors=${1:?}; shift
-    local domain=${1-""};
-    delete_http_trigger ${func}
-    echo_info "TEST: Creating HTTP trigger with Cors"
-    local command="kubeless trigger http create ing-${func} --function-name ${func}"
-    if [ -n "$domain" ]; then
-        command="$command --hostname ${domain}"
-    fi
-    if [[ $cors = "cors-enable" ]]; then
+    if [[ $var3 = "cors" ]]; then
         command="$command --cors-enable"
     fi
     eval $command

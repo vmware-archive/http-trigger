@@ -457,6 +457,7 @@ create_http_trigger(){
         command="$command --gateway ${gateway}"
     fi
     if [ -n "$cors" ]; then
+        # TODO: use --cors-enable flag when there is a new version of Kubeless CLI become available
         make -sC examples create-cors-trigger
     else
     	eval $command

@@ -67,11 +67,11 @@ load ../script/libtest
 @test "Create HTTP Trigger with cors" {
     deploy_function get-python
     verify_function get-python
-	create_http_trigger get-python "test.domain" "get-python" "cors"
-	verify_http_trigger_cors get-python $(minikube ip) "Access-Control-Allow-Origin: *" "test.domain" "get-python"
-	delete_http_trigger get-python
-	verify_clean_object httptrigger ing-get-python
-	verify_clean_object ingress ing-get-python
+	create_http_trigger ing-cors-trigger "test.domain" "get-python" "" "nginx" "cors"
+	verify_http_trigger_cors ing-cors-trigger $(minikube ip) "Access-Control-Allow-Origin: *" "test.domain" "echo"
+	delete_http_trigger cors-trigger
+	verify_clean_object httptrigger ing-cors-trigger
+	verify_clean_object ingress ing-cors-trigger
 }
 
 @test "Test no-errors" {

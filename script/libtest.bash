@@ -438,8 +438,9 @@ create_http_trigger(){
     local func=${1:?}; shift
     local domain=${1-""};
     local subpath=${2-""};
-    local var3=${3-""};
+    local basicauth=${3-""};
     local gateway=${4-""};
+    local cors=${5-""};
     delete_http_trigger ${func}
     echo_info "TEST: Creating HTTP trigger"
     local command="kubeless trigger http create ing-${func} --function-name ${func}"
@@ -449,16 +450,17 @@ create_http_trigger(){
     if [ -n "$subpath" ]; then
         command="$command --path ${subpath}"
     fi
-    if [[ $var3 = "basic-auth" ]]; then
+    if [ -n "$basicauth" ]; then
         command="$command --basic-auth-secret ${basicauth}"
     fi
     if [ -n "$gateway" ]; then
         command="$command --gateway ${gateway}"
     fi
-    if [[ $var3 = "cors" ]]; then
-        command="$command --cors-enable"
+    if [ -n "$cors" ]; then
+        make -sC examples create-cors-trigger
+    else
+    	eval $command
     fi
-    eval $command
 }
 
 update_http_trigger(){

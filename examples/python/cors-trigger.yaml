@@ -1,0 +1,11 @@
+---
+apiVersion: kubeless.io/v1beta1
+kind: HTTPTrigger
+metadata:
+  name: ing-cors-trigger
+spec:
+  function-name: get-python
+  host-name: test.domain
+  path: echo
+  gateway: nginx
+  cors-enable: true

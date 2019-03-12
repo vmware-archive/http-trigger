@@ -1,5 +1,7 @@
 get-python:
 	kubeless function deploy get-python --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
+create-cors-trigger:
+	kubectl apply -f python/cors-trigger.yaml
 
 get-python-verify:
 	kubeless function call get-python |egrep hello.world

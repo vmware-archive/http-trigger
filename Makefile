@@ -22,14 +22,8 @@ KUBELESS_ENVS := \
 
 default: binary
 
-all:
-	CGO_ENABLED=1 ./script/make.sh
-
 binary:
 	CGO_ENABLED=1 ./script/binary
-
-binary-cross:
-	./script/binary-cli
 
 http-controller-build:
 	./script/binary-controller -os=$(OS) -arch=$(ARCH) http-controller github.com/kubeless/http-trigger/cmd/http-trigger-controller
@@ -51,13 +45,6 @@ validation:
 	./script/validate-lint
 	./script/validate-gofmt
 	./script/validate-git-marks
-
-integration-tests:
-	./script/integration-tests minikube deployment
-	./script/integration-tests minikube basic
-
-minikube-rbac-test:
-	./script/integration-test-rbac minikube
 
 fmt:
 	$(GOFMT) -s -w $(GO_FILES)
@@ -84,6 +71,3 @@ bootstrap: bats ksonnet-lib
 	sudo wget -q -O /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$$KUBECTL_VERSION/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl; \
 	sudo chmod +x /usr/local/bin/kubectl; \
 	fi
-
-build_and_test:
-	./script/start-test-environment.sh "make binary && make controller-image CONTROLLER_IMAGE=bitnami/kubeless-controller-manager:latest && make integration-tests"

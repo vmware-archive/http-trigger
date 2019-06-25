@@ -77,7 +77,7 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9 
+      - image: circleci/golang:1.12 
     steps:
       - checkout
       - <<: *exports
@@ -113,7 +113,8 @@ jobs:
           path: build-manifests
   minikube_core_triggers:
     <<: *defaults
-    machine: true
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - <<: *exports
@@ -128,7 +129,7 @@ jobs:
   push_latest_images:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9 
+      - image: circleci/golang:1.12 
     steps:
       - <<: *exports
       - setup_remote_docker
@@ -146,7 +147,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9 
+      - image: circleci/golang:1.12 
     steps:
       - <<: *exports
       - checkout

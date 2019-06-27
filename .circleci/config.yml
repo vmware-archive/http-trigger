@@ -9,7 +9,7 @@ defaults: &defaults
   working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/http-trigger
   environment:
     GOPATH: /home/circleci/.go_workspace
-    HTTP_CONTROLLER_IMAGE_NAME: bitnami/http-trigger-controller
+    HTTP_CONTROLLER_IMAGE_NAME: kubeless/http-trigger-controller
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
     MINIKUBE_VERSION: v1.2.0
@@ -95,7 +95,7 @@ jobs:
           # Replace the controller version that is included in the main Kubeless manifest
           IFS=' ' read -r -a manifests <<< "$KUBELESS_MANIFESTS"
           for f in "${manifests[@]}"; do
-            sed -i.bak 's/http-trigger-controller:.*/http-trigger-controller:'"${CONTROLLER_TAG}"'/g' ${f}.yaml
+            sed -E -i.bak 's/image: .*\/http-trigger-controller:.*/image: kubeless\/http-trigger-controller:'"${CONTROLLER_TAG}"'/g' ${f}.yaml
             cp ${f}.yaml $GOPATH/src/github.com/kubeless/http-trigger/build-manifests/
           done
           cd -

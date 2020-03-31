@@ -260,10 +260,22 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 
 	ingressAnnotations := make(map[string]string)
 
-	// If exposed URL in the backend service differs from the specified path in the Ingress rule.
-	// Without a rewrite any request will return 404. Set the annotation ingress.kubernetes.io/rewrite-target
-	// to the path expected by the service
-	ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
+	switch gateway := httpTriggerObj.Spec.Gateway; gateway {
+	case "nginx":
+		// If exposed URL in the backend service differs from the specified path in the Ingress rule.
+		// Without a rewrite any request will return 404. Set the annotation ingress.kubernetes.io/rewrite-target
+		// to the path expected by the service
+		ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
+		ingressAnnotations["kubernetes.io/ingress.class"] = "nginx"
+		break
+	case "traefik":
+		ingressAnnotations["kubernetes.io/ingress.class"] = "traefik"
+		break
+	case "kong":
+		ingressAnnotations["kubernetes.io/ingress.class"] = "kong"
+		break
+	}
+
 	if len(httpTriggerObj.ObjectMeta.Annotations) > 0 {
 		for k,v := range httpTriggerObj.ObjectMeta.Annotations {
 			ingressAnnotations[k] = v
@@ -282,12 +294,10 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 	if len(httpTriggerObj.Spec.BasicAuthSecret) > 0 {
 		switch gateway := httpTriggerObj.Spec.Gateway; gateway {
 		case "nginx":
-			ingressAnnotations["kubernetes.io/ingress.class"] = "nginx"
 			ingressAnnotations["nginx.ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
 			ingressAnnotations["nginx.ingress.kubernetes.io/auth-type"] = "basic"
 			break
 		case "traefik":
-			ingressAnnotations["kubernetes.io/ingress.class"] = "traefik"
 			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
 			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
 			break

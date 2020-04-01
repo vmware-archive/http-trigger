@@ -50,6 +50,7 @@ should_test: &should_test
     fi
 #### End of definitions
 
+
 workflows:
   version: 2
   kubeless:

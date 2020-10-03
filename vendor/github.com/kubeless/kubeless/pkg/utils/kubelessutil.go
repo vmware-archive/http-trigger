@@ -18,23 +18,28 @@ package utils
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/ghodss/yaml"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,7 +72,7 @@ func appendToCommand(orig string, command ...string) string {
 	return strings.Join(command, " && ")
 }
 
-func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime, prepareImage string, runtimeVolume, depsVolume v1.VolumeMount, lr *langruntime.Langruntimes) (v1.Container, error) {
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime, prepareImage string, runtimeVolume, depsVolume v1.VolumeMount, resources v1.ResourceRequirements, lr *langruntime.Langruntimes) (v1.Container, error) {
 	prepareCommand := ""
 	originFile := path.Join(depsVolume.MountPath, fileName)
 
@@ -79,7 +84,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		originFile = decodedFile
 	} else if strings.Contains(contentType, "url") {
 		fromURLFile := "/tmp/func.fromurl"
-		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("curl %s -L --silent --output %s", function, fromURLFile))
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("curl '%s' -L --silent --output %s", function, fromURLFile))
 		originFile = fromURLFile
 	} else if strings.Contains(contentType, "text") || contentType == "" {
 		// Assumming that function is plain text
@@ -139,6 +144,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		Args:            []string{prepareCommand},
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
+		Resources:       resources,
 	}, nil
 }
 
@@ -173,7 +179,7 @@ func getFileName(handler, funcContentType, runtime string, lr *langruntime.Langr
 		return "", err
 	}
 	filename := modName
-	if funcContentType == "text" || funcContentType == "" || funcContentType == "url" {
+	if funcContentType == "text" || funcContentType == "" || funcContentType == "url" || funcContentType == "base64" {
 		// We can only guess the extension if the function is specified as plain text
 		runtimeInf, err := lr.GetRuntimeInfo(runtime)
 		if err == nil {
@@ -338,6 +344,12 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		},
 	)
 	// prepare init-containers if some function is specified
+
+	resources := v1.ResourceRequirements{}
+	if len(funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers) > 0 {
+		resources = funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers[0].Resources
+	}
+
 	if funcObj.Spec.Function != "" {
 		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
 		if err != nil {
@@ -360,6 +372,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 			provisionImage,
 			runtimeVolumeMount,
 			srcVolumeMount,
+			resources,
 			lr,
 		)
 		if err != nil {
@@ -379,18 +392,18 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 
 	// ensure that the runtime is supported for installing dependencies
 	_, err := lr.GetRuntimeInfo(funcObj.Spec.Runtime)
+	envVars := []v1.EnvVar{}
+	if len(result.Containers) > 0 {
+		envVars = result.Containers[0].Env
+	}
 	if funcObj.Spec.Deps != "" && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
 	} else if funcObj.Spec.Deps != "" {
-		envVars := []v1.EnvVar{}
-		if len(result.Containers) > 0 {
-			envVars = result.Containers[0].Env
-		}
 		depsChecksum, err := getChecksum(funcObj.Spec.Deps)
 		if err != nil {
 			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
 		}
-		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount)
+		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount, resources)
 		if err != nil {
 			return err
 		}
@@ -403,15 +416,15 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	}
 
 	// add compilation init container if needed
-	if lr.RequiresCompilation(funcObj.Spec.Runtime) {
-		_, funcName, err := splitHandler(funcObj.Spec.Handler)
-		compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, runtimeVolumeMount)
-		if err != nil {
-			return err
-		}
+	_, funcName, _ := splitHandler(funcObj.Spec.Handler)
+	compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, envVars, runtimeVolumeMount, resources)
+	if err != nil {
+		return err
+	}
+	if compContainer != nil {
 		result.InitContainers = append(
 			result.InitContainers,
-			compContainer,
+			*compContainer,
 		)
 	}
 	return nil
@@ -528,11 +541,11 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 	return err
 }
 
-func svcPort(funcObj *kubelessApi.Function) int32 {
+func svcTargetPort(funcObj *kubelessApi.Function) int32 {
 	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
 		return int32(8080)
 	}
-	return funcObj.Spec.ServiceSpec.Ports[0].Port
+	return int32(funcObj.Spec.ServiceSpec.Ports[0].TargetPort.IntValue())
 }
 
 func mergeMap(dst, src map[string]string) map[string]string {
@@ -558,7 +571,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		// "targets")
 		"prometheus.io/scrape": "true",
 		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   strconv.Itoa(int(svcPort(funcObj))),
+		"prometheus.io/port":   strconv.Itoa(int(svcTargetPort(funcObj))),
 	}
 	maxUnavailable := intstr.FromInt(0)
 
@@ -570,8 +583,8 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		MatchLabels: funcObj.ObjectMeta.Labels,
 	}
 
-	dpm.Spec.Strategy = v1beta1.DeploymentStrategy{
-		RollingUpdate: &v1beta1.RollingUpdateDeployment{
+	dpm.Spec.Strategy = appsv1.DeploymentStrategy{
+		RollingUpdate: &appsv1.RollingUpdateDeployment{
 			MaxUnavailable: &maxUnavailable,
 		},
 	}
@@ -641,24 +654,26 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 				Value: dpm.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String(),
 			},
 		)
+	} else {
+		logrus.Warn("Expected non-empty handler and non-empty function content")
 	}
 
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 		v1.EnvVar{
 			Name:  "FUNC_PORT",
-			Value: strconv.Itoa(int(svcPort(funcObj))),
+			Value: strconv.Itoa(int(svcTargetPort(funcObj))),
 		},
 	)
 
 	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.ObjectMeta.Name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
-		ContainerPort: svcPort(funcObj),
+		ContainerPort: svcTargetPort(funcObj),
 	})
 
 	// update deployment for loading dependencies
 	lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 
-	livenessProbeInfo := lr.GetLivenessProbeInfo(funcObj.Spec.Runtime, int(svcPort(funcObj)))
+	livenessProbeInfo := lr.GetLivenessProbeInfo(funcObj.Spec.Runtime, int(svcTargetPort(funcObj)))
 
 	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe == nil {
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbeInfo
@@ -673,12 +688,34 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 	}
 
-	_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
+	// Add soft pod anti affinity
+	if dpm.Spec.Template.Spec.Affinity == nil {
+		dpm.Spec.Template.Spec.Affinity = &v1.Affinity{
+			PodAntiAffinity: &v1.PodAntiAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
+					{
+						Weight: 100,
+						PodAffinityTerm: v1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"created-by": "kubeless",
+									"function":   funcObj.ObjectMeta.Name,
+								},
+							},
+							TopologyKey: "kubernetes.io/hostname",
+						},
+					},
+				},
+			},
+		}
+	}
+
+	_, err = client.AppsV1().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the Deployment already exists we should update
 		// just certain fields (to avoid race conditions)
-		var newDpm *v1beta1.Deployment
-		newDpm, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
+		var newDpm *appsv1.Deployment
+		newDpm, err = client.AppsV1().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -697,7 +734,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 			return err
 		}
 		// Use `Patch` to do a rolling update
-		_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Patch(newDpm.Name, types.MergePatchType, data)
+		_, err = client.AppsV1().Deployments(funcObj.ObjectMeta.Namespace).Patch(newDpm.Name, types.MergePatchType, data)
 		if err != nil {
 			return err
 		}
@@ -822,6 +859,7 @@ func GetKubelessConfig(cli kubernetes.Interface, cliAPIExtensions clientsetAPIEx
 	return config, nil
 }
 
+// DryRunFmt stringify the given interface in a specific format
 func DryRunFmt(format string, trigger interface{}) (string, error) {
 	switch format {
 	case "json":
@@ -839,4 +877,104 @@ func DryRunFmt(format string, trigger interface{}) (string, error) {
 	default:
 		return "", fmt.Errorf("Output format needs to be yaml or json")
 	}
+}
+
+// GetContentType Gets the content type of a given filename
+func GetContentType(filename string) (string, error) {
+	var contentType string
+
+	if strings.Index(filename, "http://") == 0 || strings.Index(filename, "https://") == 0 {
+		contentType = "url"
+		if path.Ext(strings.Split(filename, "?")[0]) == ".zip" {
+			contentType += "+zip"
+		}
+	} else {
+		fbytes, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return "", err
+		}
+		isText := utf8.ValidString(string(fbytes))
+		if isText {
+			contentType = "text"
+		} else {
+			contentType = "base64"
+			if path.Ext(filename) == ".zip" {
+				contentType += "+zip"
+			}
+		}
+	}
+	return contentType, nil
+}
+
+// ParseContent Parses the content of a file as string
+func ParseContent(file, contentType string) (string, string, error) {
+	var checksum, content string
+
+	if strings.Contains(contentType, "url") {
+
+		functionURL, err := url.Parse(file)
+		if err != nil {
+			return "", "", err
+		}
+		resp, err := http.Get(functionURL.String())
+		if err != nil {
+			return "", "", err
+		}
+		defer resp.Body.Close()
+
+		functionBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", "", err
+		}
+		content = string(functionBytes)
+		checksum, err = getSha256(functionBytes)
+		if err != nil {
+			return "", "", err
+		}
+
+	} else {
+
+		functionBytes, err := ioutil.ReadFile(file)
+		if err != nil {
+			return "", "", err
+		}
+		if contentType == "text" {
+			content = string(functionBytes)
+		} else {
+			content = base64.StdEncoding.EncodeToString(functionBytes)
+		}
+		checksum, err = getFileSha256(file)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	return content, checksum, nil
+}
+
+// Get the checksum of a file using sha256
+func getFileSha256(file string) (string, error) {
+	h := sha256.New()
+	ff, err := os.Open(file)
+	if err != nil {
+		return "", err
+	}
+	defer ff.Close()
+	_, err = io.Copy(h, ff)
+	if err != nil {
+		return "", err
+	}
+	checksum := hex.EncodeToString(h.Sum(nil))
+	return "sha256:" + checksum, err
+}
+
+// Get the checksum using sha256
+func getSha256(bytes []byte) (string, error) {
+	h := sha256.New()
+	_, err := h.Write(bytes)
+	if err != nil {
+		return "", err
+	}
+	checksum := hex.EncodeToString(h.Sum(nil))
+	return "sha256:" + checksum, nil
 }

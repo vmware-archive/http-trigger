@@ -75,7 +75,7 @@ load ../script/libtest
 }
 
 @test "Test no-errors" {
-  if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
+  if kubectl logs -n kubeless -l kubeless=controller --all-containers=true | grep "level=error"; then
     echo "Found errors in the controller logs"
     false
   fi

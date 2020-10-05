@@ -28,9 +28,9 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta1"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -43,8 +43,7 @@ import (
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 
 	// Auth plugins
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/imdario/mergo"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
@@ -320,10 +319,12 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 // CreateAutoscale creates HPA object for function
 func CreateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
 	_, err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
+// UpdateAutoscale updates an existing HPA object for a function
+func UpdateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
+	_, err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Update(&hpa)
 	return err
 }
 
@@ -348,7 +349,7 @@ func DeleteServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 
 // InitializeEmptyMapsInDeployment initializes all nil maps in a Deployment object
 // This is done to counteract with side-effects of github.com/imdario/mergo which panics when provided with a nil map in a struct
-func initializeEmptyMapsInDeployment(deployment *v1beta1.Deployment) {
+func initializeEmptyMapsInDeployment(deployment *appsv1.Deployment) {
 	if deployment.ObjectMeta.Annotations == nil {
 		deployment.Annotations = make(map[string]string)
 	}
@@ -370,11 +371,36 @@ func initializeEmptyMapsInDeployment(deployment *v1beta1.Deployment) {
 }
 
 // MergeDeployments merges two deployment objects
-func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeployment *v1beta1.Deployment) error {
+func MergeDeployments(destinationDeployment *appsv1.Deployment, sourceDeployment *appsv1.Deployment) error {
 	// Initializing nil maps in deployment objects else github.com/imdario/mergo panics
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
-	return mergo.Merge(destinationDeployment, sourceDeployment)
+	err := mergo.Merge(destinationDeployment, sourceDeployment)
+
+	// Merge containers
+	if err == nil && len(sourceDeployment.Spec.Template.Spec.Containers) > 0 {
+		srcContainers := sourceDeployment.Spec.Template.Spec.Containers
+		dstContainers := destinationDeployment.Spec.Template.Spec.Containers
+
+		// Merge each container individually
+		for i, srcContainer := range srcContainers {
+			if i >= len(dstContainers) {
+				destinationDeployment.Spec.Template.Spec.Containers[i] = srcContainer
+				continue
+			}
+
+			dstContainer := dstContainers[i]
+
+			// Use mergo.WithAppendSlice to append extra volumeMount/env/port definitions
+			err = mergo.Merge(&dstContainer, srcContainer, mergo.WithAppendSlice)
+			if err != nil {
+				break
+			}
+			destinationDeployment.Spec.Template.Spec.Containers[i] = dstContainer
+		}
+
+	}
+	return err
 }
 
 // FunctionObjAddFinalizer add specified finalizer string to function object

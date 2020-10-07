@@ -109,6 +109,9 @@ jobs:
     <<: *defaults
     machine:
       image: ubuntu-1604:202007-01
+    parameters:
+      k8s-version:
+        type: string
     steps:
       - checkout
       - <<: *exports

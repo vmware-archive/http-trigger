@@ -26,7 +26,7 @@ binary:
 	CGO_ENABLED=1 ./script/binary
 
 http-controller-build:
-	./script/binary-controller -os=$(OS) -arch=$(ARCH) http-controller github.com/kubeless/http-trigger/cmd/http-trigger-controller
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) http-controller ./cmd/http-trigger-controller
 
 http-controller-image: docker/http-controller
 	$(DOCKER) build -t $(HTTP_CONTROLLER_IMAGE) $<

@@ -36,7 +36,7 @@ else
 fi
 
 if [ -z "$4" ]; then
-    PKG="github.com/kubeless/http-trigger/cmd/http-trigger-controller/"
+    PKG="./cmd/http-trigger-controller/"
 else
     PKG=($4)
 fi

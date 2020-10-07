@@ -12,7 +12,6 @@ defaults: &defaults
     TEST_DEBUG: "1"
     MINIKUBE_VERSION: v1.13.1
     KUBELESS_MANIFESTS: kubeless kubeless-non-rbac
-    GO111MODULE: "on"
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
   # https://discuss.circleci.com/t/using-environment-variables-in-config-yml-not-working/14237

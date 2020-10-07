@@ -85,6 +85,7 @@ jobs:
       - run: make bootstrap
       - run: mkdir build-manifests
       - run: |
+          WORKSPACE_DIR=$(pwd)
           git clone https://github.com/kubeless/kubeless.git $GOPATH/src/github.com/kubeless/kubeless
           ln -s $(pwd)/ksonnet-lib $GOPATH/src/github.com/kubeless/kubeless/ksonnet-lib
           cd $GOPATH/src/github.com/kubeless/kubeless
@@ -94,7 +95,7 @@ jobs:
           IFS=' ' read -r -a manifests <<< "$KUBELESS_MANIFESTS"
           for f in "${manifests[@]}"; do
             sed -E -i.bak 's/image: .*\/http-trigger-controller:.*/image: kubeless\/http-trigger-controller:'"${CONTROLLER_TAG}"'/g' ${f}.yaml
-            cp ${f}.yaml $GOPATH/src/github.com/kubeless/http-trigger/build-manifests/
+            cp ${f}.yaml ${WORKSPACE_DIR}/build-manifests/
           done
           cd -
       # Install kubeless required files

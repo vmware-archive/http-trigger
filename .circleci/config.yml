@@ -10,7 +10,9 @@ defaults: &defaults
     HTTP_CONTROLLER_IMAGE_NAME: kubeless/http-trigger-controller
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
-    MINIKUBE_VERSION: v1.13.1
+    # Ingress addon stopped working after v1.11.0.
+    # See https://github.com/kubernetes/minikube/issues/9322
+    MINIKUBE_VERSION: v1.11.0
     KUBELESS_MANIFESTS: kubeless kubeless-non-rbac
 exports: &exports
   # It is not possible to resolve env vars in the environment section:

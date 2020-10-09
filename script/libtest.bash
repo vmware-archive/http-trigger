@@ -492,7 +492,7 @@ verify_http_trigger(){
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for ingress to be ready..."
     until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
-        ((cnt=cnt-1)) || (echo "ERROR: failed to verify http trigger"; kubectl describe deployment; kubectl describe ing; return 1)
+        ((cnt=cnt-1)) || (echo "ERROR: failed to verify http trigger"; kubectl describe deployment -n kubeless; kubectl describe deployment; kubectl describe ing; return 1)
         sleep 1
     done
     sleep 3

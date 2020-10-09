@@ -143,6 +143,10 @@ kubeless_recreate() {
     done
     kubectl create namespace kubeless
     kubectl create -f ${manifest_upd}
+    echo_info "Describe deployment/kubeless-controller-manager"
+    kubectl describe deployment/kubeless-controller-manager -n kubeless
+    echo_info "Docker images"
+    docker images
 }
 kubeless_function_delete() {
     local func=${1:?}; shift

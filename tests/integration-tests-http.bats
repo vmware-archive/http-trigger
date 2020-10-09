@@ -17,8 +17,6 @@
 load ../script/libtest
 
 @test "Wait for Ingress" {
-  echo "Describe ingress:"
-  kubectl describe ing -n kubeless
   wait_for_ingress
 }
 

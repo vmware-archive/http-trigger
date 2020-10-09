@@ -89,8 +89,9 @@ if [ ${exit_code} -ne 0 -o -n "${TRAVIS_DUMP_LOGS}" ]; then
     done
     echo "INFO: Description"
     kubectl describe pod -l created-by=kubeless
+    kubectl describe ing
     echo "INFO: LOGs: pod: kube-dns ###"
-    kubectl logs --prefix=true -n kube-system -l k8s-app=kube-dns -c kubedns
+    kubectl logs --prefix=true -n kube-system -l k8s-app=kube-dns -c coredns
     echo "INFO: LOGs: END"
 fi
 [ ${exit_code} -eq 0 ] && echo "INFO: $0: SUCCESS" || echo "ERROR: $0: FAILED"

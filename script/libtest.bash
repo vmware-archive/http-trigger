@@ -145,8 +145,6 @@ kubeless_recreate() {
     kubectl create -f ${manifest_upd}
     echo_info "Describe deployment/kubeless-controller-manager"
     kubectl describe deployment/kubeless-controller-manager -n kubeless
-    echo_info "Docker images"
-    docker images
 }
 kubeless_function_delete() {
     local func=${1:?}; shift
@@ -298,6 +296,8 @@ redeploy_with_rbac_roles() {
     kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST_RBAC
     _wait_for_kubeless_controller_ready
     _wait_for_kubeless_controller_logline "controller synced and ready"
+    echo_info "Describe deployment/kubeless-controller-manager"
+    kubectl describe deployment/kubeless-controller-manager -n kubeless
 }
 
 deploy_kafka() {

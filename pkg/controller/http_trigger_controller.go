@@ -72,11 +72,11 @@ func NewHTTPTriggerController(cfg HTTPTriggerConfig) *HTTPTriggerController {
 	if err != nil {
 		logrus.Fatalf("Unable to read the configmap: %s", err)
 	}
-	httpTrigggerInformer := httptriggerinformers.NewHTTPTriggerInformer(cfg.TriggerClient, config.Data["functions-namespace"], 0, cache.Indexers{})
+	httpTriggerInformer := httptriggerinformers.NewHTTPTriggerInformer(cfg.TriggerClient, config.Data["functions-namespace"], 0, cache.Indexers{})
 
 	functionInformer := kubelessInformers.NewFunctionInformer(cfg.KubelessClient, config.Data["functions-namespace"], 0, cache.Indexers{})
 
-	httpTrigggerInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	httpTriggerInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(obj)
 			if err == nil {
@@ -105,7 +105,7 @@ func NewHTTPTriggerController(cfg HTTPTriggerConfig) *HTTPTriggerController {
 		logger:              logrus.WithField("controller", "http-trigger-controller"),
 		clientset:           cfg.KubeCli,
 		httpclient:          cfg.TriggerClient,
-		httpTriggerInformer: httpTrigggerInformer,
+		httpTriggerInformer: httpTriggerInformer,
 		functionInformer:    functionInformer,
 		queue:               queue,
 	}
@@ -241,6 +241,7 @@ func (c *HTTPTriggerController) syncHTTPTrigger(key string) error {
 	c.logger.Infof("Adding ingress resource for http trigger Obj: %s ", key)
 	or, err := kubelessutils.GetOwnerReference(httpTriggerKind, httpTriggerAPIVersion, httpTriggerObj.Name, httpTriggerObj.UID)
 	if err != nil {
+		c.logger.Errorf("Failed to retrieve owner reference for http trigger %s: %v ", httpTriggerObj.Name, err)
 		return err
 	}
 	err = httptriggerutils.CreateIngress(c.clientset, httpTriggerObj, or)

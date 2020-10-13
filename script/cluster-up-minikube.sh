@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 # From minikube howto
 export MINIKUBE_WANTUPDATENOTIFICATION=false
 export MINIKUBE_WANTREPORTERRORPROMPT=false
@@ -77,11 +79,7 @@ sudo -E ${MINIKUBE_BIN} config set WantUpdateNotification false
 
 # Add default HTTP backend service, which is missing in Minikube > v1.2.0.
 if [ $(kubectl get svc -n kube-system -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep default-http-backend | wc -l) == 0 ]; then
-    curl -fsSL https://raw.githubusercontent.com/kubernetes/minikube/v1.2.0/deploy/addons/ingress/ingress-dp.yaml.tmpl | \
-        head -n 60 | \
-        sed -E 's#^(\s+image: ).*#\1 gcr.io/google_containers/defaultbackend:1.4#' | \
-        kubectl create -f -
-    kubectl create -f https://raw.githubusercontent.com/kubernetes/minikube/v1.2.0/deploy/addons/ingress/ingress-svc.yaml.tmpl
+    kubectl create -f default-http-backend.yml
 fi
 
 # Give some time for the cluster to become healthy

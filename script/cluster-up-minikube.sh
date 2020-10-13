@@ -76,11 +76,13 @@ sudo -E ${MINIKUBE_BIN} addons enable ingress
 sudo -E ${MINIKUBE_BIN} config set WantUpdateNotification false
 
 # Add default HTTP backend service, which is missing in Minikube > v1.2.0.
-curl -fsSL https://raw.githubusercontent.com/kubernetes/minikube/v1.2.0/deploy/addons/ingress/ingress-dp.yaml.tmpl | \
-    head -n 60 | \
-    sed -E 's#^(\s+image: ).*#\1 gcr.io/google_containers/defaultbackend:1.4#' | \
-    kubectl create -f -
-kubectl create -f https://raw.githubusercontent.com/kubernetes/minikube/v1.2.0/deploy/addons/ingress/ingress-svc.yaml.tmpl
+if [ $(kubectl get svc -n kube-system -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep default-http-backend | wc -l) == 0 ]; then
+    curl -fsSL https://raw.githubusercontent.com/kubernetes/minikube/v1.2.0/deploy/addons/ingress/ingress-dp.yaml.tmpl | \
+        head -n 60 | \
+        sed -E 's#^(\s+image: ).*#\1 gcr.io/google_containers/defaultbackend:1.4#' | \
+        kubectl create -f -
+    kubectl create -f https://raw.githubusercontent.com/kubernetes/minikube/v1.2.0/deploy/addons/ingress/ingress-svc.yaml.tmpl
+fi
 
 # Give some time for the cluster to become healthy
 sleep 10

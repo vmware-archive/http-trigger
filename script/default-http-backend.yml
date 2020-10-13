@@ -3,7 +3,7 @@
 # get the HTTP triggers to work.
 ---
 # Source https://github.com/kubernetes/minikube/blob/v1.2.0/deploy/addons/ingress/ingress-dp.yaml.tmpl#L15-L59
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: default-http-backend

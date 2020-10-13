@@ -79,7 +79,8 @@ sudo -E ${MINIKUBE_BIN} config set WantUpdateNotification false
 
 # Add default HTTP backend service, which is missing in Minikube > v1.2.0.
 if [ $(kubectl get svc -n kube-system -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep default-http-backend | wc -l) == 0 ]; then
-    kubectl create -f default-http-backend.yml
+    CURDIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 && pwd -P )"
+    kubectl create -f $CURDIR/default-http-backend.yml
 fi
 
 # Give some time for the cluster to become healthy

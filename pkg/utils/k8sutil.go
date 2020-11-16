@@ -78,6 +78,7 @@ func GetTriggerClientInCluster() (versioned.Interface, error) {
 
 // BuildOutOfClusterConfig returns k8s config
 func BuildOutOfClusterConfig() (*rest.Config, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeconfigPath := os.Getenv("KUBECONFIG")
 	if kubeconfigPath == "" {
 		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
@@ -89,8 +90,14 @@ func BuildOutOfClusterConfig() (*rest.Config, error) {
 			}
 		}
 		kubeconfigPath = filepath.Join(home, ".kube", "config")
+		loadingRules.ExplicitPath = kubeconfigPath
 	}
-	return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		loadingRules, &clientcmd.ConfigOverrides{}).ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 // GetKubelessClientOutCluster returns kubeless clientset to make kubeless API request from outside of cluster

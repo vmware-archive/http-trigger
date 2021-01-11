@@ -491,7 +491,7 @@ verify_http_trigger(){
     kubeless trigger http list | grep ${func}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for ingress to be ready..."
-    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+    until kubectl get ingress -o custom-columns="NAME:.metadata.name,HOSTS:.spec.rules[*].host,IP:.status.loadBalancer.ingress[*].ip" | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
         ((cnt=cnt-1)) || (echo "ERROR: failed to verify http trigger"; kubectl describe deployment -n kubeless; kubectl describe deployment; kubectl describe ing; kubectl logs -l kubeless=controller -c http-trigger-controller -n kubeless; return 1)
         sleep 1
     done
@@ -508,7 +508,7 @@ verify_http_trigger_basic_auth(){
     kubeless trigger http list | grep ${func}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for ingress to be ready..."
-    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+    until kubectl get ingress -o custom-columns="NAME:.metadata.name,HOSTS:.spec.rules[*].host,IP:.status.loadBalancer.ingress[*].ip" | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -525,7 +525,7 @@ verify_https_trigger(){
     kubeless trigger http list | grep ${func}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for ingress to be ready..."
-    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+    until kubectl get ingress -o custom-columns="NAME:.metadata.name,HOSTS:.spec.rules[*].host,IP:.status.loadBalancer.ingress[*].ip" | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -542,7 +542,7 @@ verify_http_trigger_cors(){
     kubeless trigger http list | grep ${func}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for ingress to be ready..."
-    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+    until kubectl get ingress -o custom-columns="NAME:.metadata.name,HOSTS:.spec.rules[*].host,IP:.status.loadBalancer.ingress[*].ip" | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done

@@ -18,14 +18,14 @@ load ../script/libtest
   : ${TEST_CONTEXT:?}
 }
 @test "Verify needed kubernetes tools installed" {
-  verify_k8s_tools
+    verify_k8s_tools
 }
 @test "Verify k8s RBAC mode" {
-  verify_rbac_mode
+    verify_rbac_mode
 }
 @test "Test simple function failure without RBAC rules" {
-  test_must_fail_without_rbac_roles
+    test_must_fail_without_rbac_roles
 }
 @test "Redeploy with proper RBAC rules" {
-  redeploy_with_rbac_roles
+    redeploy_with_rbac_roles
 }

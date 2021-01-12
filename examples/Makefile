@@ -40,26 +40,14 @@ get-python-deps-update-verify:
 	echo "Checking updated deps of $$pod"; \
 	kubectl exec -it $$pod pip freeze | grep -q "twitter=="
 
-get-python-34:
-	kubeless function deploy get-python --runtime python3.4 --handler helloget.foo --from-file python/helloget.py
-
-get-python-34-verify:
-	kubeless function call get-python |egrep hello.world
-
-get-python-36:
-	kubeless function deploy get-python-36 --runtime python3.6 --handler helloget.foo --from-file python/helloget.py
-
-get-python-36-verify:
-	kubeless function call get-python-36 |egrep hello.world
-
 get-python-url-deps:
-	kubeless function deploy get-python-url-deps --runtime python3.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/hellowithdeps.py --dependencies https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/requirements.txt
+	kubeless function deploy get-python-url-deps --runtime python3.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.7/examples/python/hellowithdeps.py --dependencies https://raw.githubusercontent.com/kubeless/kubeless/v1.0.7/examples/python/requirements.txt
 
 get-python-url-deps-verify:
-	kubeless function call get-python-url-deps |egrep Google	
+	kubeless function call get-python-url-deps |egrep Google
 
 get-node-url-zip:
-	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.zip?raw=true
+	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/v1.0.7/examples/nodejs/helloFunctions.zip?raw=true
 
 get-node-url-zip-verify:
 	kubeless function call get-node-url-zip |egrep hello.world
@@ -290,7 +278,7 @@ custom-get-python-update-verify:
 get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps get-python-custom-port
 
 post-python:
-	kubeless function deploy post-python --runtime python3.7 --handler hellowithdata.handler --from-file python/hellowithdata34.py
+	kubeless function deploy post-python --runtime python3.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
 
 post-python-verify:
 	kubeless function call post-python --data '{"it-s": "alive"}'|egrep "it.*alive"

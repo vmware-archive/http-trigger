@@ -26,7 +26,7 @@ binary:
 	CGO_ENABLED=1 ./script/binary
 
 http-controller-build:
-	./script/binary-controller -os=$(OS) -arch=$(ARCH) http-controller github.com/kubeless/http-trigger/cmd/http-trigger-controller
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) http-controller ./cmd/http-trigger-controller
 
 http-controller-image: docker/http-controller
 	$(DOCKER) build -t $(HTTP_CONTROLLER_IMAGE) $<
@@ -70,3 +70,7 @@ bootstrap: bats ksonnet-lib
 	sudo wget -q -O /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$$KUBECTL_VERSION/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl; \
 	sudo chmod +x /usr/local/bin/kubectl; \
 	fi
+
+.PHONY: build-manifests
+build-manifests:
+	./script/build-manifests.sh

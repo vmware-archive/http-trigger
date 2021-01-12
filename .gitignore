@@ -167,3 +167,4 @@ nats.yaml
 kinesis.yaml
 http.yaml
 cronjob.yaml
+vendor/

@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 ## Definitions
 build_allways: &build_allways
@@ -6,29 +6,30 @@ build_allways: &build_allways
     tags:
       only: /.*/
 defaults: &defaults
-  working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/http-trigger
   environment:
-    GOPATH: /home/circleci/.go_workspace
     HTTP_CONTROLLER_IMAGE_NAME: kubeless/http-trigger-controller
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
-    MINIKUBE_VERSION: v1.2.0
+    # Ingress addon stopped working after v1.11.0.
+    # See https://github.com/kubernetes/minikube/issues/9322
+    # This should be solved when https://github.com/kubernetes/minikube/commit/b27440d4aeabe0657f77a02f80acd8a300d4ac4d
+    # is reverted, expected release v1.14.0.
+    MINIKUBE_VERSION: v1.11.0
     KUBELESS_MANIFESTS: kubeless kubeless-non-rbac
-    GO111MODULE: "on"
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
   # https://discuss.circleci.com/t/using-environment-variables-in-config-yml-not-working/14237
   run: |
     CONTROLLER_TAG=${CIRCLE_TAG:-build-$CIRCLE_WORKFLOW_ID}
     echo "export CONTROLLER_TAG=${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export HTTP_CONTROLLER_IMAGE=${HTTP_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV    
+    echo "export HTTP_CONTROLLER_IMAGE=${HTTP_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/http-trigger/ksonnet-lib" >> $BASH_ENV
     echo "export PATH=$(pwd)/bats/libexec:$PATH" >> $BASH_ENV
 restore_workspace: &restore_workspace
   run: |
     make bootstrap
     sudo cp -r /tmp/go/bin/* /usr/local/bin/
-    cp -r /tmp/go/src/github.com/kubeless/http-trigger/build-manifests/*yaml .
+    cp -r /tmp/go/build-manifests/*yaml .
 should_test: &should_test
   run: |
     case $CIRCLE_JOB in
@@ -42,7 +43,7 @@ should_test: &should_test
       if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_http_trigger__title=" == "" || "$pr_http_trigger__title=" =~ ^.*(http|HTTP).*$ ]]; then
         export SHOULD_TEST=1
       fi
-      ;;      
+      ;;
     esac
     echo "Should test? $SHOULD_TEST"
     if [[ "$SHOULD_TEST" != "1" ]]; then
@@ -61,6 +62,16 @@ workflows:
           <<: *build_allways
           requires:
             - build
+          matrix:
+            parameters:
+              # Amazon EKS Kubernetes versions.
+              # See https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html
+              k8s-version:
+                - v1.14.9
+                - v1.15.11
+                - v1.16.13
+                - v1.17.9
+                - v1.18.9
       - push_latest_images:
           filters:
             branches:
@@ -79,65 +90,58 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12 
+      - image: circleci/golang:1.15
     steps:
       - checkout
       - <<: *exports
-      # go build creates files under /usr/local/go where the running user doesn't have permissions to write
-      - run: sudo chown -R circleci:circleci /usr/local/go/
+      - run: go mod download
       - run: make bootstrap
-      - run: mkdir build-manifests
-      - run: |
-          git clone https://github.com/kubeless/kubeless.git $GOPATH/src/github.com/kubeless/kubeless
-          ln -s $(pwd)/ksonnet-lib $GOPATH/src/github.com/kubeless/kubeless/ksonnet-lib
-          cd $GOPATH/src/github.com/kubeless/kubeless
-          make binary
-          make all-yaml
-          # Replace the controller version that is included in the main Kubeless manifest
-          IFS=' ' read -r -a manifests <<< "$KUBELESS_MANIFESTS"
-          for f in "${manifests[@]}"; do
-            sed -E -i.bak 's/image: .*\/http-trigger-controller:.*/image: kubeless\/http-trigger-controller:'"${CONTROLLER_TAG}"'/g' ${f}.yaml
-            cp ${f}.yaml $GOPATH/src/github.com/kubeless/http-trigger/build-manifests/
-          done
-          cd -
-      # Install kubeless required files
+      - run: make build-manifests
       - run: make VERSION=${CONTROLLER_TAG} binary
       - run: make test
       - run: make validation
       - persist_to_workspace:
-          root: /home/circleci/.go_workspace
-          paths: 
-            - bin
-            - src/github.com/kubeless/http-trigger/build-manifests/*yaml
+          root: /go
+          paths:
+            - ./bin
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - ./build-manifests/*yaml
       - store_artifacts:
-          path: /home/circleci/.go_workspace/bin/kubeless
+          path: /go/bin/kubeless
+          destination: ./bin/kubeless
       - store_artifacts:
-          path: build-manifests
+          path: ./build-manifests/
   minikube_core_triggers:
     <<: *defaults
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-1604:202007-01
+    parameters:
+      k8s-version:
+        type: string
     steps:
       - checkout
       - <<: *exports
+      - run: |
+          echo "export MINIKUBE_KUBERNETES_VERSION=<< parameters.k8s-version >>" >> $BASH_ENV
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
-      - run: sudo apt-get update -y
-      - run: sudo apt-get install -y apache2-utils
+      - run: sudo apt-get update && sudo apt-get install -y apache2-utils conntrack
       - run: ./script/pull-or-build-image.sh http-controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube http
   push_latest_images:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12 
+      - image: circleci/golang:1.15
     steps:
       - <<: *exports
       - setup_remote_docker
-      - run: docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"   
+      - run: docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       - run: |
-          images=( 
+          images=(
             $HTTP_CONTROLLER_IMAGE_NAME
           )
           for image in "${images[@]}"; do
@@ -149,7 +153,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12 
+      - image: circleci/golang:1.15
     steps:
       - <<: *exports
       - checkout

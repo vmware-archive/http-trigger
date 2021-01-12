@@ -23,7 +23,7 @@ KINESIS_MANIFEST=kinesis.yaml
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
 
-export TEST_MAX_WAIT_SEC=300
+export TEST_MAX_WAIT_SEC=600
 
 # Workaround 'bats' lack of forced output support, dup() stderr fd
 exec 9>&2

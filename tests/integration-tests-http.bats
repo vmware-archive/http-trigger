@@ -73,14 +73,3 @@ load ../script/libtest
     verify_clean_object httptrigger ing-cors-trigger
     verify_clean_object ingress ing-cors-trigger
 }
-
-#@test "Test no-errors" {
-#    if kubectl logs -n kubeless -l kubeless=controller -c kubeless-function-controller | grep "level=error"; then
-#        echo "Found errors in kubeless-function-controller logs"
-#        false
-#    fi
-#    if kubectl logs -n kubeless -l kubeless=controller -c http-trigger-controller | grep "level=error"; then
-#        echo "Found errors in http-trigger-controller logs"
-#        false
-#    fi
-#}
